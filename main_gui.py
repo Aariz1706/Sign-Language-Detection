@@ -10,9 +10,12 @@ window.title("Sign Language Recognition")
 window.geometry("400x200")
 
 label = tk.Label(window , text = "Prediction: " , font = ("Arial" , 20)) #Label widget or button to show prediction
-label.pack(pady = 20) #Adds label with paddin g tot he window
+label.pack(pady = 20) #Adds label wirth paddin g tot he window
 word_label = tk.Label(window , text = "Word:" , font = ("Arial" , 24))
 word_label.pack(pady = 20)
+
+button_frame = tk.Frame(window)
+button_frame.pack(pady=10)
 
 try:
     model = joblib.load("sign_knn_model.pkl") #Load the pre-trained KNN model
@@ -26,6 +29,23 @@ hands = mp_hands.Hands(min_detection_confidence = 0.7 , min_tracking_confidence 
 
 buffer_letter = []
 word = ""
+
+def remove_last_letter():
+    global word
+    if word:
+        word = word[:-1]
+        word_label.config(text=f"Word: {word}")
+
+def clear_word():
+    global word
+    word = ""
+    word_label.config(text="Word:")
+
+button_remove = tk.Button(button_frame , text="Remove Last", command=remove_last_letter, bg="orange", font=("Arial", 12))
+button_remove.grid(row=0, column=0, padx=10)
+
+button_clear = tk.Button(button_frame , text="Clear Word", command=clear_word, bg="red", font=("Arial", 12))
+button_clear.grid(row=0, column=1, padx=10)
 
 def video_loop():
     global word

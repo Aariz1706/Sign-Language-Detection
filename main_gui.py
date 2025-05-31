@@ -3,11 +3,13 @@ import joblib
 import mediapipe as mp
 import numpy as np
 import tkinter as tk
-from threading import Thread
 import time
+from threading import Thread
+from tkinter import colorchooser #Pick a color using a built-in pop-up
+from tkinter import ttk #Used for a drop down good-looking  
 
 # --- Tkinter GUI Setup ---
-window = tk.Tk()
+window = tk.Tk()    
 window.title("Sign Language Recognition")
 window.geometry("400x200")
 window.configure(bg="#1e1e1e")
@@ -17,18 +19,6 @@ font_word = ("Segoe UI", 22)
 font_button = ("Segoe UI", 12)
 text_color = "#ffffff"
 
-label = tk.Label(window, text="Prediction:", font = ("Arial", 20), fg = text_color, bg = "#1e1e1e")
-label.pack(pady = 20)
-
-word_label = tk.Label(window, text = "Word:", font = ("Arial", 24), fg = text_color, bg = "#1e1e1e")
-word_label.pack(pady = 20)
-
-history_text = tk.Text(window, height = 6, width = 40, font = ("Segoe UI", 12), fg = "#00ffcc", bg = "#2c2c2c")
-history_text.pack(pady = 10)
-
-button_frame = tk.Frame(window, bg = "#1e1e1e")
-button_frame.pack(pady = 10)
-
 style = {
     "font": font_button,
     "width": 14,
@@ -37,6 +27,42 @@ style = {
     "fg": "#ffffff",
     "activeforeground": "#ffffff",
 }
+
+label = tk.Label(window, text="Prediction:", font = ("Arial", 20), fg = text_color, bg = "#1e1e1e")
+label.pack(pady = 20) #Used for vertical spacing
+
+word_label = tk.Label(window, text = "Word:", font = ("Arial", 24), fg = text_color, bg = "#1e1e1e")
+word_label.pack(pady = 20) #Used for vertical spacing
+
+history_text = tk.Text(window, height = 6, width = 40, font = ("Segoe UI", 12), fg = "#00ffcc", bg = "#2c2c2c")
+history_text.pack(pady = 10) #Used for vertical spacing
+
+button_frame = tk.Frame(window, bg = "#1e1e1e")
+button_frame.pack(pady = 10) #Used for vertical spacing
+
+frame = tk.Frame(window , bg = "#1e1e1e")
+frame.pack(pady = 10) #Used for vertical spacing
+
+font_options = [ "Arial" , "Comic Sans MS" , "Times New Roman" , "Courier New" , "Segoe UI" , "Helvetica"]
+selected_font = tk.StringVar(value = "Segoe UI")
+
+def update_font(*args):
+    word_label.config(font=(selected_font.get(), 22))
+    label.config(font=(selected_font.get(), 18, "bold"))
+
+font_dropdown = ttk.Combobox(frame , textvariable = selected_font, values = font_options, width = 20, state = "readonly") # Creates a dropdown menu which links to the variable storing the selected font with font list , width and user will not type and can ony choose(readonly)
+font_dropdown.bind("<<ComboboxSelected>>", update_font) #This tells the dropdown to use the new font
+font_dropdown.grid(row = 0, column = 0, padx = 10) #Places the dropdown using a grid layout and adds horizontal spacing
+
+# Color picker
+def pick_color():
+    color = colorchooser.askcolor(title="Choose text color") #askcolor() gives a color palette. It returns a tuple like (R,G,B) with the hexcode
+    if color[1]: #If hex code choosen then it updates the text color of the word and prediction levels
+        word_label.config(fg = color[1])
+        label.config(fg = color[1])
+
+color_button = tk.Button(frame, text = "Pick Text Color", command = pick_color, **style, bg = "#9b59b6", activebackground = "#7f4ca0") #Adds a button labeled "Pick Text Color" , when clicked it runs pick_color() to open the color chooser. It is styled with a purple background and placed to the right of the dropdown.
+color_button.grid(row = 0, column = 1, padx = 10)
 
 # --- Load your pre-trained KNN model ---
 try:

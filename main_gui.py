@@ -2,34 +2,59 @@ import cv2
 import joblib
 import mediapipe as mp
 import numpy as np
-import tkinter as tk # Used to create the GUI window
-from threading import Thread # To run video capture without freezing the GUI
+import tkinter as tk
+from threading import Thread
+import time
 
+# --- Tkinter GUI Setup ---
 window = tk.Tk()
 window.title("Sign Language Recognition")
 window.geometry("400x200")
+window.configure(bg="#1e1e1e")
 
-label = tk.Label(window , text = "Prediction: " , font = ("Arial" , 20)) #Label widget or button to show prediction
-label.pack(pady = 20) #Adds label wirth paddin g tot he window
-word_label = tk.Label(window , text = "Word:" , font = ("Arial" , 24))
+font_main = ("Segoe UI", 18, "bold")
+font_word = ("Segoe UI", 22)
+font_button = ("Segoe UI", 12)
+text_color = "#ffffff"
+
+label = tk.Label(window, text="Prediction:", font = ("Arial", 20), fg = text_color, bg = "#1e1e1e")
+label.pack(pady = 20)
+
+word_label = tk.Label(window, text = "Word:", font = ("Arial", 24), fg = text_color, bg = "#1e1e1e")
 word_label.pack(pady = 20)
 
-button_frame = tk.Frame(window)
-button_frame.pack(pady=10)
+history_text = tk.Text(window, height = 6, width = 40, font = ("Segoe UI", 12), fg = "#00ffcc", bg = "#2c2c2c")
+history_text.pack(pady = 10)
 
+button_frame = tk.Frame(window, bg = "#1e1e1e")
+button_frame.pack(pady = 10)
+
+style = {
+    "font": font_button,
+    "width": 14,
+    "height": 1,
+    "bd": 0,
+    "fg": "#ffffff",
+    "activeforeground": "#ffffff",
+}
+
+# --- Load your pre-trained KNN model ---
 try:
-    model = joblib.load("sign_knn_model.pkl") #Load the pre-trained KNN model
+    model = joblib.load("sign_knn_model.pkl")
 except Exception as e:
-    print(f"Error loading model:{e}")
+    print(f"Error loading model: {e}")
     exit()
 
-mp_hands = mp.solutions.hands #Access mediapipe hands soln
-mp_drawing = mp.solutions.drawing_utils #Utilities to draw landmarks
-hands = mp_hands.Hands(min_detection_confidence = 0.7 , min_tracking_confidence = 0.5) #Initialize hand detection with CI
+# --- Mediapipe setup ---
+mp_hands = mp.solutions.hands
+mp_drawing = mp.solutions.drawing_utils
+hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.5) #Initialize hand detection with CI
 
 buffer_letter = []
 word = ""
+save_words = []
 
+# --- Button commands ---
 def remove_last_letter():
     global word
     if word:
@@ -41,50 +66,93 @@ def clear_word():
     word = ""
     word_label.config(text="Word:")
 
-button_remove = tk.Button(button_frame , text="Remove Last", command=remove_last_letter, bg="orange", font=("Arial", 12))
+def wordings():
+    global word , save_words
+    if word.strip():
+        save_words.append(word)
+        with open("saved_words.txt" , "a") as f:
+            f.write(word + "\n")
+        print("Saved words:" , word)
+        word_label.config(text="Word:")
+        word = ""
+
+def history():
+    global save_words
+    if save_words:
+        filename = f"exported_words_{int(time.time())}.txt"
+        with open(filename , "w") as f:
+            f.write("\n".join(save_words)) 
+        print(f"Exported history to: {filename}")
+        history_text.delete(1.0 , tk.END)
+        history_text.insert(tk.END , "Exported Words:\n" + "\n".join(save_words))
+
+button_remove = tk.Button(button_frame, text="Remove Last", command = remove_last_letter, bg = "#ff8800", activebackground = "#cc7000", **style)
 button_remove.grid(row=0, column=0, padx=10)
 
-button_clear = tk.Button(button_frame , text="Clear Word", command=clear_word, bg="red", font=("Arial", 12))
+button_clear = tk.Button(button_frame, text="Clear Word", command = clear_word, bg = "#e74c3c", activebackground = "#c0392b", **style)
 button_clear.grid(row=0, column=1, padx=10)
 
+button_save = tk.Button(button_frame, text="Save Word", command = wordings, bg = "#27ae60", activebackground = "#1e8449", **style)
+button_save.grid(row=1, column=0, padx=5, pady=10)
+
+button_export = tk.Button(button_frame, text="Export History", command = history, bg = "#2980b9", activebackground = "#1c5980", **style)
+button_export.grid(row=1, column=1, padx=5, pady=10)
+
+# --- Video capture and prediction thread ---
 def video_loop():
     global word
     cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        print("Webcam could not be opened")
+        return
+
     while True:
-        success , frame = cap.read() #Capture a single frame
+        time.sleep(0.015)  # small delay to reduce CPU load
+        success, frame = cap.read()
         if not success:
-            print("Failed to read frame from webcam")
             continue
 
-        frame = cv2.flip(frame , 1) #Flip horizontaaly for mirroring
-        frame = cv2.resize(frame , (480,480))
-        rgb_frame = cv2.cvtColor(frame , cv2.COLOR_BGR2RGB) #Converting to rgb in mediapipe
+        frame = cv2.flip(frame, 1)  # mirror image horizontally
+        frame = cv2.resize(frame, (480, 480))
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = hands.process(rgb_frame)
+
         predicted_letter = ""
-        if results.multi_hand_landmarks: #If mp detected any hands
+        if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks: #Loop from each hand that is 21 landmarks of each hand
-                mp_drawing.draw_landmarks(frame , hand_landmarks , mp_hands.HAND_CONNECTIONS) #frame- video image, hand_landmarks- data for that hand, and mp_hands.HAND_CONNECTIONS- which landmarks are connected by lines.
-                landmarks=[]
+                mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS) #frame- video image, hand_landmarks- data for that hand, and mp_hands.HAND_CONNECTIONS- which landmarks are connected by lines.
+
+                landmarks = []
                 for lm in hand_landmarks.landmark:
-                    landmarks.extend([lm.x , lm.y , lm.z])
-                landmarks_np = np.array(landmarks).reshape(1 , -1)
+                    landmarks.extend([lm.x, lm.y, lm.z])
+
+                landmarks_np = np.array(landmarks).reshape(1, -1)
                 predicted_letter = model.predict(landmarks_np)[0]
 
+            # Buffer smoothing logic
             buffer_letter.append(predicted_letter)
             if len(buffer_letter) > 15:
                 buffer_letter.pop(0)
-            most_common_letter = max(set(buffer_letter) , key = buffer_letter.count)
+
+            most_common_letter = max(set(buffer_letter), key=buffer_letter.count)
             frequency = buffer_letter.count(most_common_letter)
+
+            # Add to word only if prediction is stable and new
             if frequency > 12 and (len(word) == 0 or most_common_letter != word[-1]):
-                word +=most_common_letter
+                word += most_common_letter
                 buffer_letter.clear()
-                word_label.config(text = f"Word: {word}")
-            label.config(text = f"Prediction: {predicted_letter}")
-        cv2.imshow("Hand Tracker" , frame)
-        if cv2.waitKey(1) & 0xff == ord("q"):
+                word_label.config(text=f"Word: {word}")
+
+            label.config(text=f"Prediction: {predicted_letter}")
+
+        cv2.imshow("Hand Tracker", frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     cap.release()
     cv2.destroyAllWindows()
-Thread(target = video_loop ,  daemon = True).start()
+
+# Start video loop in a separate thread to avoid freezing GUI
+Thread(target=video_loop, daemon=True).start()
+
 window.mainloop()

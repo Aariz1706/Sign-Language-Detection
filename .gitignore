@@ -1,0 +1,16 @@
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore virtual environment
+venv/
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore env files
+.env
+
+# Ignore export files (optional)
+exported_words_*.txt

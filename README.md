@@ -6,7 +6,7 @@ A real-time hand sign recognition system that uses computer vision and machine l
 
 ## Demo
 
-![Demo](assets/Animation.gif)
+![Demo](Animation.gif)
 
 ---
 

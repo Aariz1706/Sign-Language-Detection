@@ -10,7 +10,7 @@ from tkinter import ttk #Used for a drop down good-looking
 
 # --- Tkinter GUI Setup ---
 window = tk.Tk()    
-window.title("Sign Language Recognition")
+window.title("Sign Language Detection")
 window.geometry("400x200")
 window.configure(bg="#1e1e1e")
 
@@ -182,3 +182,4 @@ def video_loop():
 Thread(target=video_loop, daemon=True).start()
 
 window.mainloop()
+
